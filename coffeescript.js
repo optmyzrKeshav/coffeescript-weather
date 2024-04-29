@@ -4,7 +4,7 @@
 
   API_KEY = "3edd04b4790e8483645f24667cd79d87";
 
-  loadCityList = async(async function() {
+  loadCityList = async function() {
     var data, error, response;
     try {
       response = (await fetch("./current.city.list.json"));
@@ -14,7 +14,7 @@
       error = error1;
       return console.log("error fetching json: ", error);
     }
-  });
+  };
 
   populateSelection = function(data, selectId) {
     var city, i, len, option, results, select;
@@ -30,14 +30,19 @@
     return results;
   };
 
-  main = async(async function() {
+  main = async function() {
     var data;
+    console.log("main");
     data = (await loadCityList());
     populateSelection(data.slice(1, 10), "city-selector");
     return $("#city-selector").chosen();
-  });
+  };
+
+  main();
 
   fetchDataButton = document.getElementById("fetchDataButton");
+
+  console.log(fetchDataButton);
 
   fetchDataButtonHandler = function() {
     var selectElement;
@@ -50,6 +55,8 @@
       });
     }
   };
+
+  fetchDataButton.addEventListener("click", fetchDataButtonHandler);
 
   getWeatherDataForId = function(id) {
     return fetch("https://api.openweathermap.org/data/2.5/weather?id=" + id + "&appid=" + API_KEY).then(function(response) {
@@ -65,6 +72,8 @@
   };
 
   unitSelectorButton = document.getElementById("unitSelectorButton");
+
+  console.log(unitSelectorButton);
 
   currentTempUnit = "K";
 

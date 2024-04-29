@@ -28,7 +28,7 @@ body {
     font-size: 16px;
 }
 
-.fetchDataButton {
+#fetchDataButton {
     display: block;
     width: 100%;
     padding: 10px;
