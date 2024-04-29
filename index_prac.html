@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <link rel="stylesheet" href= "https://cdnjs.cloudflare.com/ajax/libs/chosen/1.4.2/chosen.min.css" /> 
+</head>
+<body>
+    <!-- <script id="city-selector-template" type="text/template"> -->
+    
+    <div id="city-selector-container">
+        <select class="select__input" name="city-selector" id="city-selector">
+            <option value="" selected disabled>Select a city</option>
+        </select>
+        <button class="fetchDataButton" onclick="fetchDataButtonHandler()">NEXT</button>
+    </div>
+    <div>
+        <button id="toggleUnitButton" onclick="toggleTemperatureUnit()">Kelvin</button>
+        <ul id="weatherList">
+            <script type="text/template" id="item-template">
+                <li class="weather-item">
+                    <h2><%= name %></h2>
+                    <p>Temperature: <span class="temperature"></span></p>
+                    <button data-id=<%= id %> class="updateButton">Update</button>
+                    <button data-id=<%= id %> class="deleteButton">Delete</button>
+                </li>
+            </script>
+        </ul>
+    </div>
+</body>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.js" integrity="sha512-+k1pnlgt4F1H8L7t3z95o3/KO+o78INEcXTbnoJQ/F2VqDVhWoaiVml/OEHv9HsVgxUaVW+IbiZPUJQfF/YxZw==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/underscore.js/1.13.6/underscore-min.js" integrity="sha512-2V49R8ndaagCOnwmj8QnbT1Gz/rie17UouD9Re5WxbzRVUGoftCu5IuqqtAM9+UC3fwfHCSJR1hkzNQh/2wdtg==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+
+<script src="https://cdn.jsdelivr.net/npm/backbone/backbone-min.min.js"></script>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/chosen/1.8.7/chosen.jquery.min.js" integrity="sha512-rMGGF4wg1R73ehtnxXBt5mbUfN9JUJwbk21KMlnLZDJh7BkPmeovBuddZCENJddHYYMkCh9hPFnPmS9sspki8g==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" integrity="sha512-c3Nl8+7g4LMSTdrm621y7kf9v3SDPnhxLNhcjFJbKECVnmZHTdo+IRO05sNLTH/D3vA6u1X32ehoLC7WFVdheg==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+
+<script src="./script.js"></script>
+
+<script>
+    const API_KEY = "3edd04b4790e8483645f24667cd79d87";
+
+    async function loadCityList() {
+        return fetch("./current.city.list.json")
+            .then((response) => response.json())
+            .catch((error) => {
+                console.log("error fetching json: ", error);
+            });
+    }
+
+    function populateSelection(data, selectId) {
+        const select = document.getElementById(selectId);
+
+        data.forEach((city) => {
+            const option = document.createElement("option");
+            option.text = city.name; // Assuming your JSON has a "name" field for each city
+            option.value = city.id; // Assuming your JSON has an "id" field for each city
+            select.appendChild(option);
+        });
+    }
+
+    async function main() {
+        const data = await loadCityList();
+        populateSelection(data, "city-selector");
+        // Decorate
+        $("#city-selector").chosen();
+    }
+
+    main();
+
+    fetchDataButton = document.getElementById("fetchDataButton");
+
+    function fetchDataButtonHandler() {
+        const selectElement = document.getElementById("city-selector");
+        console.log("nextButton:", selectElement.value);
+        if (selectElement.value) {
+            getWeatherDataForId(selectElement.value).then((data) => {
+                collectionObj.add(new WeatherItemDataModel(data));
+                console.log(data);
+            });
+        }
+    }
+
+    let city_id = 2172797;
+
+    function getWeatherDataForId(id) {
+        return fetch(`https://api.openweathermap.org/data/2.5/weather?id=${id}&appid=${API_KEY}`)
+            .then((response) => {
+                return response.json();
+            })
+            .then((data) => {
+                console.log("next:", data);
+                return {
+                    id: data.id,
+                    name: data.name,
+                    temperature: data.main.temp,
+                };
+            });
+    }
+
+    getWeatherDataForId(city_id).then((obj) => {
+        // console.log(obj);
+    });
+
+    const WeatherItemDataModel = Backbone.Model.extend({
+        initialize: function () {
+            // console.log("creating model");
+        },
+        defaults: {
+            id: -1,
+            name: "placeholder",
+            temperature: -100,
+        },
+    });
+
+    const WeatherItemCollection = Backbone.Collection.extend({
+        model: WeatherItemDataModel,
+    });
+
+    const collectionObj = new WeatherItemCollection();
+    const obj = new WeatherItemDataModel({ id: 321, name: "keshav", temperature: 89 });
+    collectionObj.add(obj);
+
+    const view = Backbone.View.extend({
+        initialize: function () {
+            this.listenTo(this.collection, "add", this.render);
+            this.listenTo(this.collection, "destroy", this.render); // Render when a model is destroyed
+        },
+        template: _.template($("#item-template").html()),
+        render: function () {
+            console.log("render");
+            this.$el.empty();
+            this.collection.each((model) => {
+                const itemHtml = this.template({ id: model.get("id"), name: model.get("name"), temperature: model.get("temperature") });
+                this.$el.append(itemHtml);
+            });
+            return this;
+        },
+        events: {
+            "click .updateButton": "updateData",
+            "click .deleteButton": "deleteWeatherItem",
+        },
+        updateData: function (event) {
+            const itemId = $(event.currentTarget).data("id");
+            const modelToUpdate = this.collection.get(itemId);
+
+            getWeatherDataForId(itemId)
+                .then((updatedData) => {
+                    modelToUpdate.set("temperature", updatedData.temperature);
+                    this.render();
+                })
+                .catch((error) => {
+                    console.error("Error updating weather data:", error);
+                });
+        },
+        deleteWeatherItem: function (event) {
+            console.log("deleting");
+            const itemId = $(event.currentTarget).data("id");
+            const modelToDelete = this.collection.get(itemId);
+            console.log(event.currentTarget);
+            if (modelToDelete) {
+                modelToDelete.destroy(); // Destroy the model
+            }
+            this.render();
+        },
+    });
+
+    const modelObj = new WeatherItemDataModel();
+    const newview = new view({ el: weatherList, collection: collectionObj });
+    newview.render();
+
+    Backbone.sync = function (method, model, success, error) {
+        success.success();
+    };
+
+    // Function to toggle temperature units
+    let currentUnit = "K"; // Initial unit is Kelvin
+
+    function toggleTemperatureUnit() {
+        const toggleButton = document.getElementById("toggleUnitButton");
+        if (currentUnit === "K") {
+            currentUnit = "C";
+            toggleButton.textContent = "Celsius";
+        } else if (currentUnit === "C") {
+            currentUnit = "F";
+            toggleButton.textContent = "Fahrenheit";
+        } else {
+            currentUnit = "K";
+            toggleButton.textContent = "Kelvin";
+        }
+
+        // Update temperature display
+        const temperatures = document.querySelectorAll(".temperature");
+        temperatures.forEach((tempElement) => {
+            const tempInKelvin = parseFloat(tempElement.textContent);
+            if (currentUnit === "C") {
+                tempElement.textContent = convertKelvinToCelsius(tempInKelvin).toFixed(2);
+            } else if (currentUnit === "F") {
+                tempElement.textContent = convertKelvinToFahrenheit(tempInKelvin).toFixed(2);
+            } else {
+                tempElement.textContent = tempInKelvin.toFixed(2);
+            }
+        });
+    }
+
+    // Helper function to convert Kelvin to Celsius
+    function convertKelvinToCelsius(kelvin) {
+        return kelvin - 273.15;
+    }
+
+    // Helper function to convert Kelvin to Fahrenheit
+    function convertKelvinToFahrenheit(kelvin) {
+        return (kelvin - 273.15) * 1.8 + 32;
+    }
+</script>
+</html>
